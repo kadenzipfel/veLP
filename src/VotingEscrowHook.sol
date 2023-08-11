@@ -7,6 +7,8 @@ import {IPoolManager} from "@uniswap/v4-core/contracts/interfaces/IPoolManager.s
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {PoolKey} from "@uniswap/v4-core/contracts/types/PoolKey.sol";
+import {PoolId} from "@uniswap/v4-core/contracts/types/PoolId.sol";
+import {Position} from "@uniswap/v4-core/contracts/libraries/Position.sol";
 
 /// @title  VotingEscrowHook
 /// @author Curve Finance (MIT) - original concept and implementation in Vyper
@@ -31,6 +33,9 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         LockAction indexed action,
         uint256 ts
     );
+
+    // Pool ID
+    PoolId poolId;
 
     // Shared global state
     ERC20 public token;
@@ -70,10 +75,13 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     }
 
     constructor(
+        PoolId _poolId,
         address _token,
         string memory _name,
         string memory _symbol
     ) BaseHook(IPoolManager(msg.sender)) {
+        poolId = _poolId;
+
         token = ERC20(_token);
         pointHistory[0] = Point({
             bias: int128(0),
@@ -332,34 +340,36 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
 
     /// @notice Creates a new lock
     /// @param _unlockTime Time at which the lock expires
-    function createLock(uint256 _unlockTime)
+    /// @param _tickLower Lower tick for liquidity position
+    /// @param _tickUpper Upper tick for liquidity position
+    function createLock(uint256 _unlockTime, int24 _tickLower, int24 _tickUpper)
         external
         nonReentrant
     {
         uint256 unlock_time = _floorToWeek(_unlockTime); // Locktime is rounded down to weeks
         LockedBalance memory locked_ = locked[msg.sender];
+        Position.Info memory position = poolManager.getPosition(poolId, msg.sender, _tickLower, _tickUpper);
+        uint256 value = uint256(position.liquidity);
+
         // Validate inputs
-        // TODO: Enforce user has liquidity position
-        // TODO: Enforce user liquidity position of correct range
+        require(value > 0, "No liquidity position");
         require(locked_.amount == 0, "Lock exists");
         require(unlock_time >= locked_.end, "Only increase lock end");
         require(unlock_time > block.timestamp, "Only future lock end");
         require(unlock_time <= block.timestamp + MAXTIME, "Exceeds maxtime");
         // Update lock and voting power (checkpoint)
-        // TODO: Calculate value of liquidity position
-        // TODO: Set locked amount as value of liquidity position
+        locked_.amount = int128(uint128(value));
         locked_.end = unlock_time;
         locked[msg.sender] = locked_;
         _checkpoint(msg.sender, LockedBalance(0, 0), locked_);
         // Deposit locked tokens
-        // TODO: Uncomment once we've retrieve value of position
-        // emit Deposit(
-        //     msg.sender,
-        //     _value,
-        //     unlock_time,
-        //     LockAction.CREATE,
-        //     block.timestamp
-        // );
+        emit Deposit(
+            msg.sender,
+            value,
+            unlock_time,
+            LockAction.CREATE,
+            block.timestamp
+        );
     }
 
     /// @notice Extends the expiration of an existing lock
