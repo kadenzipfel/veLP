@@ -6,6 +6,7 @@ import {Hooks} from "@uniswap/v4-core/contracts/libraries/Hooks.sol";
 import {IPoolManager} from "@uniswap/v4-core/contracts/interfaces/IPoolManager.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {PoolKey} from "@uniswap/v4-core/contracts/types/PoolKey.sol";
 
 /// @title  VotingEscrowHook
 /// @author Curve Finance (MIT) - original concept and implementation in Vyper
@@ -93,12 +94,23 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
             beforeInitialize: false,
             afterInitialize: false,
             beforeModifyPosition: true,
-            afterModifyPosition: true,
+            afterModifyPosition: false,
             beforeSwap: false,
             afterSwap: false,
             beforeDonate: false,
             afterDonate: false
         });
+    }
+
+    function beforeModifyPosition(address, PoolKey calldata, IPoolManager.ModifyPositionParams calldata)
+        external
+        view
+        override
+        returns (bytes4)
+    {
+        LockedBalance memory locked_ = locked[msg.sender];
+        require(locked_.end <= block.timestamp, "Only future lock end");
+        return VotingEscrowHook.beforeModifyPosition.selector;
     }
 
     /// ~~~~~~~~~~~~~~~~~~~~~~~~~~~ ///
