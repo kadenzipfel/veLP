@@ -12,6 +12,7 @@ import {VotingEscrowImplementation} from "./VotingEscrowImplementation.sol";
 import {Hooks} from "@uniswap/v4-core/contracts/libraries/Hooks.sol";
 import {PoolModifyPositionTest} from "@uniswap/v4-core/contracts/test/PoolModifyPositionTest.sol";
 import {CurrencyLibrary, Currency} from "@uniswap/v4-core/contracts/types/Currency.sol";
+import {TickMath} from "@uniswap/v4-core/contracts/libraries/TickMath.sol";
 
 contract VotingEscrowTest is Test, Deployers {
     using PoolIdLibrary for PoolKey;
@@ -76,6 +77,17 @@ contract VotingEscrowTest is Test, Deployers {
     function testAfterInitializeState() public {
         manager.initialize(key, SQRT_RATIO_2_1);
         assertEq(PoolId.unwrap(votingEscrow.poolId()), PoolId.unwrap(id));
+    }
+
+    function testModifyPosition() public {
+        manager.initialize(key, SQRT_RATIO_1_1);
+
+        modifyPositionRouter.modifyPosition(
+            key,
+            IPoolManager.ModifyPositionParams(
+                TickMath.minUsableTick(MAX_TICK_SPACING), TickMath.maxUsableTick(MAX_TICK_SPACING), 1000
+            )
+        );
     }
 }
 
