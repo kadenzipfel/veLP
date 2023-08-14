@@ -162,6 +162,13 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
 
         Position.Info memory position = poolManager.getPosition(poolId, msg.sender, modifyPositionParams.tickLower, modifyPositionParams.tickUpper);
         LockedBalance memory locked_ = locked[msg.sender];
+
+        if (locked_.end > block.timestamp) {
+            // Lock still active, enforce invariant
+            assert(locked_.amount < int128(position.liquidity));
+        }
+
+
         locked_.amount = int128(position.liquidity);
 
         return VotingEscrowHook.beforeModifyPosition.selector;
