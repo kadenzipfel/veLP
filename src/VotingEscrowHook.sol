@@ -21,19 +21,8 @@ import {BalanceDelta} from "@uniswap/v4-core/contracts/types/BalanceDelta.sol";
 /// @notice Curve VotingEscrow mechanics applied to Uniswap v4 hook
 contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     // Shared Events
-    event Deposit(
-        address indexed provider,
-        uint256 value,
-        uint256 locktime,
-        LockAction indexed action,
-        uint256 ts
-    );
-    event Withdraw(
-        address indexed provider,
-        uint256 value,
-        LockAction indexed action,
-        uint256 ts
-    );
+    event Deposit(address indexed provider, uint256 value, uint256 locktime, LockAction indexed action, uint256 ts);
+    event Withdraw(address indexed provider, uint256 value, LockAction indexed action, uint256 ts);
 
     // Pool ID
     PoolId poolId;
@@ -43,7 +32,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     bool initialized;
     uint256 public constant WEEK = 7 days;
     uint256 public constant MAXTIME = 365 days;
-    uint256 public constant MULTIPLIER = 10**18;
+    uint256 public constant MULTIPLIER = 10 ** 18;
 
     // Lock state
     uint256 public globalEpoch;
@@ -66,10 +55,12 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         uint256 ts;
         uint256 blk;
     }
+
     struct LockedBalance {
         uint128 amount;
         uint128 end;
     }
+
     struct LockTicks {
         int24 lowerTick;
         int24 upperTick;
@@ -85,19 +76,11 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     /// @param _poolManager Uniswap v4 PoolManager contract
     /// @param _name Name of non-transferrable ve token
     /// @param _symbol Symbol of non-transferrable ve token
-    constructor(
-        IPoolManager _poolManager,
-        address _token,
-        string memory _name,
-        string memory _symbol
-    ) BaseHook(_poolManager) {
+    constructor(IPoolManager _poolManager, address _token, string memory _name, string memory _symbol)
+        BaseHook(_poolManager)
+    {
         token = ERC20(_token);
-        pointHistory[0] = Point({
-            bias: int128(0),
-            slope: int128(0),
-            ts: block.timestamp,
-            blk: block.number
-        });
+        pointHistory[0] = Point({bias: int128(0), slope: int128(0), ts: block.timestamp, blk: block.number});
 
         decimals = ERC20(_token).decimals();
         require(decimals <= 18, "Exceeds max decimals");
@@ -131,41 +114,48 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     /// @notice Hook run before modifying user liquidity position
     /// @param sender msg.sender of PoolManager.modifyPosition call
     /// @param modifyPositionParams Params passed to PoolManager.modifyPosition call
-    function beforeModifyPosition(address sender, PoolKey calldata, IPoolManager.ModifyPositionParams calldata modifyPositionParams)
-        external
-        view
-        override
-        poolManagerOnly
-        returns (bytes4)
-    {
+    function beforeModifyPosition(
+        address sender,
+        PoolKey calldata,
+        IPoolManager.ModifyPositionParams calldata modifyPositionParams
+    ) external view override poolManagerOnly returns (bytes4) {
         LockTicks memory lockTicks_ = lockTicks[sender];
-        if (lockTicks_.lowerTick != modifyPositionParams.tickLower || lockTicks_.upperTick != modifyPositionParams.tickUpper) {
+        if (
+            lockTicks_.lowerTick != modifyPositionParams.tickLower
+                || lockTicks_.upperTick != modifyPositionParams.tickUpper
+        ) {
             // Not modifying locked position, continue execution
-            return VotingEscrowHook.beforeModifyPosition.selector;    
+            return VotingEscrowHook.beforeModifyPosition.selector;
         }
 
         LockedBalance memory locked_ = locked[sender];
         // Can only increase position liquidity while locked
-        require(modifyPositionParams.liquidityDelta > 0 || locked_.end <= block.timestamp, "Can't withdraw before lock end");
+        require(
+            modifyPositionParams.liquidityDelta > 0 || locked_.end <= block.timestamp, "Can't withdraw before lock end"
+        );
         return VotingEscrowHook.beforeModifyPosition.selector;
     }
 
     /// @notice Hook run after modifying user liquidity position
     /// @param sender msg.sender of PoolManager.modifyPosition call
     /// @param modifyPositionParams Params passed to PoolManager.modifyPosition call
-    function afterModifyPosition(address sender, PoolKey calldata, IPoolManager.ModifyPositionParams calldata modifyPositionParams, BalanceDelta)
-        external
-        override
-        poolManagerOnly
-        returns (bytes4)
-    {
+    function afterModifyPosition(
+        address sender,
+        PoolKey calldata,
+        IPoolManager.ModifyPositionParams calldata modifyPositionParams,
+        BalanceDelta
+    ) external override poolManagerOnly returns (bytes4) {
         LockTicks memory lockTicks_ = lockTicks[sender];
-        if (lockTicks_.lowerTick != modifyPositionParams.tickLower || lockTicks_.upperTick != modifyPositionParams.tickUpper) {
+        if (
+            lockTicks_.lowerTick != modifyPositionParams.tickLower
+                || lockTicks_.upperTick != modifyPositionParams.tickUpper
+        ) {
             // Not modifying locked position, continue execution
-            return VotingEscrowHook.afterModifyPosition.selector;    
+            return VotingEscrowHook.afterModifyPosition.selector;
         }
 
-        Position.Info memory position = poolManager.getPosition(poolId, sender, modifyPositionParams.tickLower, modifyPositionParams.tickUpper);
+        Position.Info memory position =
+            poolManager.getPosition(poolId, sender, modifyPositionParams.tickLower, modifyPositionParams.tickUpper);
         LockedBalance memory locked_ = locked[sender];
 
         if (locked_.end > block.timestamp) {
@@ -198,15 +188,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     /// @return bias i.e. y
     /// @return slope i.e. linear gradient
     /// @return ts i.e. time point was logged
-    function getLastUserPoint(address _addr)
-        external
-        view
-        returns (
-            int128 bias,
-            int128 slope,
-            uint256 ts
-        )
-    {
+    function getLastUserPoint(address _addr) external view returns (int128 bias, int128 slope, uint256 ts) {
         uint256 uepoch = userPointEpoch[_addr];
         if (uepoch == 0) {
             return (0, 0, 0);
@@ -219,11 +201,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     /// @param _addr User address, or address(0) for only global
     /// @param _oldLocked Old amount that user had locked, or null for global
     /// @param _newLocked new amount that user has locked, or null for global
-    function _checkpoint(
-        address _addr,
-        LockedBalance memory _oldLocked,
-        LockedBalance memory _newLocked
-    ) internal {
+    function _checkpoint(address _addr, LockedBalance memory _oldLocked, LockedBalance memory _newLocked) internal {
         Point memory userOldPoint;
         Point memory userNewPoint;
         int128 oldSlopeDelta = 0;
@@ -234,20 +212,12 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
             // Calculate slopes and biases
             // Kept at zero when they have to
             if (_oldLocked.end > block.timestamp) {
-                userOldPoint.slope =
-                    int128(_oldLocked.amount) /
-                    int128(int256(MAXTIME));
-                userOldPoint.bias =
-                    userOldPoint.slope *
-                    int128(int256(_oldLocked.end - block.timestamp));
+                userOldPoint.slope = int128(_oldLocked.amount) / int128(int256(MAXTIME));
+                userOldPoint.bias = userOldPoint.slope * int128(int256(_oldLocked.end - block.timestamp));
             }
             if (_newLocked.end > block.timestamp) {
-                userNewPoint.slope =
-                    int128(_newLocked.amount) /
-                    int128(int256(MAXTIME));
-                userNewPoint.bias =
-                    userNewPoint.slope *
-                    int128(int256(_newLocked.end - block.timestamp));
+                userNewPoint.slope = int128(_newLocked.amount) / int128(int256(MAXTIME));
+                userNewPoint.bias = userNewPoint.slope * int128(int256(_newLocked.end - block.timestamp));
             }
 
             // Moved from bottom final if statement to resolve stack too deep err
@@ -278,13 +248,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
             }
         }
 
-        Point memory lastPoint =
-            Point({
-                bias: 0,
-                slope: 0,
-                ts: block.timestamp,
-                blk: block.number
-            });
+        Point memory lastPoint = Point({bias: 0, slope: 0, ts: block.timestamp, blk: block.number});
         if (epoch > 0) {
             lastPoint = pointHistory[epoch];
         }
@@ -293,13 +257,10 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         // initialLastPoint is used for extrapolation to calculate block number
         // (approximately, for *At methods) and save them
         // as we cannot figure that out exactly from inside the contract
-        Point memory initialLastPoint =
-            Point({ bias: 0, slope: 0, ts: lastPoint.ts, blk: lastPoint.blk });
+        Point memory initialLastPoint = Point({bias: 0, slope: 0, ts: lastPoint.ts, blk: lastPoint.blk});
         uint256 blockSlope = 0; // dblock/dt
         if (block.timestamp > lastPoint.ts) {
-            blockSlope =
-                (MULTIPLIER * (block.number - lastPoint.blk)) /
-                (block.timestamp - lastPoint.ts);
+            blockSlope = (MULTIPLIER * (block.number - lastPoint.blk)) / (block.timestamp - lastPoint.ts);
         }
         // If last point is already recorded in this block, slope=0
         // But that's ok b/c we know the block in such case
@@ -316,9 +277,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
             } else {
                 dSlope = slopeChanges[iterativeTime];
             }
-            int128 biasDelta =
-                lastPoint.slope *
-                    int128(int256((iterativeTime - lastCheckpoint)));
+            int128 biasDelta = lastPoint.slope * int128(int256((iterativeTime - lastCheckpoint)));
             lastPoint.bias = lastPoint.bias - biasDelta;
             lastPoint.slope = lastPoint.slope + dSlope;
             // This can happen
@@ -331,10 +290,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
             }
             lastCheckpoint = iterativeTime;
             lastPoint.ts = iterativeTime;
-            lastPoint.blk =
-                initialLastPoint.blk +
-                (blockSlope * (iterativeTime - initialLastPoint.ts)) /
-                MULTIPLIER;
+            lastPoint.blk = initialLastPoint.blk + (blockSlope * (iterativeTime - initialLastPoint.ts)) / MULTIPLIER;
 
             // when epoch is incremented, we either push here or after slopes updated below
             epoch = epoch + 1;
@@ -352,14 +308,8 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         if (_addr != address(0)) {
             // If last point was in this block, the slope change has been applied already
             // But in such case we have 0 slope(s)
-            lastPoint.slope =
-                lastPoint.slope +
-                userNewPoint.slope -
-                userOldPoint.slope;
-            lastPoint.bias =
-                lastPoint.bias +
-                userNewPoint.bias -
-                userOldPoint.bias;
+            lastPoint.slope = lastPoint.slope + userNewPoint.slope - userOldPoint.slope;
+            lastPoint.bias = lastPoint.bias + userNewPoint.bias - userOldPoint.bias;
             if (lastPoint.slope < 0) {
                 lastPoint.slope = 0;
             }
@@ -403,10 +353,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     /// @param _unlockTime Time at which the lock expires
     /// @param _tickLower Lower tick for liquidity position
     /// @param _tickUpper Upper tick for liquidity position
-    function createLock(uint256 _unlockTime, int24 _tickLower, int24 _tickUpper)
-        external
-        nonReentrant
-    {
+    function createLock(uint256 _unlockTime, int24 _tickLower, int24 _tickUpper) external nonReentrant {
         uint256 unlock_time = _floorToWeek(_unlockTime); // Locktime is rounded down to weeks
         LockedBalance memory locked_ = locked[msg.sender];
         Position.Info memory position = poolManager.getPosition(poolId, msg.sender, _tickLower, _tickUpper);
@@ -422,29 +369,17 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         locked_.amount = uint128(value);
         locked_.end = uint128(unlock_time);
         locked[msg.sender] = locked_;
-        lockTicks[msg.sender] = LockTicks({
-            lowerTick: _tickLower,
-            upperTick: _tickUpper
-        });
+        lockTicks[msg.sender] = LockTicks({lowerTick: _tickLower, upperTick: _tickUpper});
         _checkpoint(msg.sender, LockedBalance(0, 0), locked_);
         // Deposit locked tokens
-        emit Deposit(
-            msg.sender,
-            value,
-            unlock_time,
-            LockAction.CREATE,
-            block.timestamp
-        );
+        emit Deposit(msg.sender, value, unlock_time, LockAction.CREATE, block.timestamp);
     }
 
     /// @notice Extends the expiration of an existing lock
     /// @param _unlockTime New lock expiration time
     /// @dev Does not update the amount of tokens locked.
     /// @dev Does increase the user's voting power.
-    function increaseUnlockTime(uint256 _unlockTime)
-        external
-        nonReentrant
-    {
+    function increaseUnlockTime(uint256 _unlockTime) external nonReentrant {
         LockedBalance memory locked_ = locked[msg.sender];
         uint256 unlock_time = _floorToWeek(_unlockTime); // Locktime is rounded down to weeks
         // Validate inputs
@@ -459,26 +394,12 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         LockedBalance memory oldLocked = _copyLock(locked_);
         oldLocked.end = uint128(oldUnlockTime);
         _checkpoint(msg.sender, oldLocked, locked_);
-        emit Deposit(
-            msg.sender,
-            0,
-            unlock_time,
-            LockAction.INCREASE_TIME,
-            block.timestamp
-        );
+        emit Deposit(msg.sender, 0, unlock_time, LockAction.INCREASE_TIME, block.timestamp);
     }
 
     // Creates a copy of a lock
-    function _copyLock(LockedBalance memory _locked)
-        internal
-        pure
-        returns (LockedBalance memory)
-    {
-        return
-            LockedBalance({
-                amount: _locked.amount,
-                end: _locked.end
-            });
+    function _copyLock(LockedBalance memory _locked) internal pure returns (LockedBalance memory) {
+        return LockedBalance({amount: _locked.amount, end: _locked.end});
     }
 
     // @dev Floors a timestamp to the nearest weekly increment

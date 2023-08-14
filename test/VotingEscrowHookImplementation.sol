@@ -7,7 +7,13 @@ import {IPoolManager} from "@uniswap/v4-core/contracts/interfaces/IPoolManager.s
 import {Hooks} from "@uniswap/v4-core/contracts/libraries/Hooks.sol";
 
 contract VotingEscrowHookImplementation is VotingEscrowHook {
-    constructor(IPoolManager _poolManager, address _token, string memory _name, string memory _symbol, VotingEscrowHook addressToEtch) VotingEscrowHook(_poolManager, _token, _name, _symbol) {
+    constructor(
+        IPoolManager _poolManager,
+        address _token,
+        string memory _name,
+        string memory _symbol,
+        VotingEscrowHook addressToEtch
+    ) VotingEscrowHook(_poolManager, _token, _name, _symbol) {
         Hooks.validateHookAddress(addressToEtch, getHooksCalls());
     }
 

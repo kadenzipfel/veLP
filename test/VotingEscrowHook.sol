@@ -22,9 +22,9 @@ contract VotingEscrowHookTest is Test, Deployers {
     TestERC20 token0;
     TestERC20 token1;
     PoolManager manager;
-    VotingEscrowHookImplementation votingEscrowHook = VotingEscrowHookImplementation(address(uint160(
-        Hooks.BEFORE_MODIFY_POSITION_FLAG | Hooks.AFTER_MODIFY_POSITION_FLAG
-    )));
+    VotingEscrowHookImplementation votingEscrowHook = VotingEscrowHookImplementation(
+        address(uint160(Hooks.BEFORE_MODIFY_POSITION_FLAG | Hooks.AFTER_MODIFY_POSITION_FLAG))
+    );
     PoolKey key;
     PoolId id;
 
@@ -36,7 +36,8 @@ contract VotingEscrowHookTest is Test, Deployers {
         manager = new PoolManager(500000);
 
         vm.record();
-        VotingEscrowHookImplementation impl = new VotingEscrowHookImplementation(manager, address(token0), "veToken", "veTKN", votingEscrowHook);
+        VotingEscrowHookImplementation impl =
+            new VotingEscrowHookImplementation(manager, address(token0), "veToken", "veTKN", votingEscrowHook);
         (, bytes32[] memory writes) = vm.accesses(address(impl));
         vm.etch(address(votingEscrowHook), address(impl).code);
         // for each storage key that was written during the hook implementation, copy the value over
@@ -46,8 +47,9 @@ contract VotingEscrowHookTest is Test, Deployers {
                 vm.store(address(votingEscrowHook), slot, vm.load(address(impl), slot));
             }
         }
-        key =
-            PoolKey(Currency.wrap(address(token0)), Currency.wrap(address(token1)), 0, MAX_TICK_SPACING, votingEscrowHook);
+        key = PoolKey(
+            Currency.wrap(address(token0)), Currency.wrap(address(token1)), 0, MAX_TICK_SPACING, votingEscrowHook
+        );
         id = key.toId();
         votingEscrowHook.setPoolId(id);
 
