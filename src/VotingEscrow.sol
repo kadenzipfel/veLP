@@ -27,7 +27,7 @@ contract VotingEscrow is BaseHook, ReentrancyGuard {
     event Withdraw(address indexed provider, uint256 value, LockAction indexed action, uint256 ts);
 
     // Pool ID
-    PoolId poolId;
+    PoolId public poolId;
 
     // Shared global state
     ERC20 public token;

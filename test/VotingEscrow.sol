@@ -72,6 +72,11 @@ contract VotingEscrowTest is Test, Deployers {
     function testBeforeInitializeAllowsPoolCreation() public {
         manager.initialize(key, SQRT_RATIO_1_1);
     }
+
+    function testAfterInitializeState() public {
+        manager.initialize(key, SQRT_RATIO_2_1);
+        assertEq(PoolId.unwrap(votingEscrow.poolId()), PoolId.unwrap(id));
+    }
 }
 
 contract TestERC20Decimals is TestERC20 {
