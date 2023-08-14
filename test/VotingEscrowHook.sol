@@ -53,7 +53,6 @@ contract VotingEscrowHookTest is Test, Deployers {
             Currency.wrap(address(token0)), Currency.wrap(address(token1)), 0, MAX_TICK_SPACING, votingEscrowHook
         );
         id = key.toId();
-        votingEscrowHook.setPoolId(id);
 
         modifyPositionRouter = new PoolModifyPositionTest(manager);
 
