@@ -9,6 +9,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {PoolKey} from "@uniswap/v4-core/contracts/types/PoolKey.sol";
 import {PoolId} from "@uniswap/v4-core/contracts/types/PoolId.sol";
 import {Position} from "@uniswap/v4-core/contracts/libraries/Position.sol";
+import {BalanceDelta} from "@uniswap/v4-core/contracts/types/BalanceDelta.sol";
 
 /// @title  VotingEscrowHook
 /// @author Curve Finance (MIT) - original concept and implementation in Vyper
@@ -107,7 +108,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
             beforeInitialize: false,
             afterInitialize: false,
             beforeModifyPosition: true,
-            afterModifyPosition: false,
+            afterModifyPosition: true,
             beforeSwap: false,
             afterSwap: false,
             beforeDonate: false,
@@ -130,6 +131,25 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         LockedBalance memory locked_ = locked[sender];
         // Can only increase position liquidity while locked
         require(modifyPositionParams.liquidityDelta > 0 || locked_.end <= block.timestamp, "Can't withdraw before lock end");
+        return VotingEscrowHook.beforeModifyPosition.selector;
+    }
+
+    function afterModifyPosition(address sender, PoolKey calldata, IPoolManager.ModifyPositionParams calldata modifyPositionParams, BalanceDelta)
+        external
+        view
+        override
+        returns (bytes4)
+    {
+        LockTicks memory lockTicks_ = lockTicks[sender];
+        if (lockTicks_.lowerTick != modifyPositionParams.tickLower || lockTicks_.upperTick != modifyPositionParams.tickUpper) {
+            // Not modifying locked position, continue execution
+            return VotingEscrowHook.beforeModifyPosition.selector;    
+        }
+
+        Position.Info memory position = poolManager.getPosition(poolId, msg.sender, modifyPositionParams.tickLower, modifyPositionParams.tickUpper);
+        LockedBalance memory locked_ = locked[msg.sender];
+        locked_.amount = int128(position.liquidity);
+
         return VotingEscrowHook.beforeModifyPosition.selector;
     }
 
