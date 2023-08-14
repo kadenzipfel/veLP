@@ -85,11 +85,12 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     /// @param _name Name of non-transferrable ve token
     /// @param _symbol Symbol of non-transferrable ve token
     constructor(
+        IPoolManager _poolManager,
         PoolId _poolId,
         address _token,
         string memory _name,
         string memory _symbol
-    ) BaseHook(IPoolManager(msg.sender)) {
+    ) BaseHook(_poolManager) {
         poolId = _poolId;
 
         token = ERC20(_token);
