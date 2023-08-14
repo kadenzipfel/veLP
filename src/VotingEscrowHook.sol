@@ -81,6 +81,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     }
 
     /// @notice Constructor
+    /// @param _poolManager Uniswap v4 PoolManager contract
     /// @param _poolId Uniswap v4 pool ID which this hook is applied to
     /// @param _name Name of non-transferrable ve token
     /// @param _symbol Symbol of non-transferrable ve token
