@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import {BaseHook} from "../../../contracts/BaseHook.sol";
+import {BaseHook} from "@uniswap/v4-periphery/contracts/BaseHook.sol";
 import {VotingEscrowHook} from "../src/VotingEscrowHook.sol";
 import {IPoolManager} from "@uniswap/v4-core/contracts/interfaces/IPoolManager.sol";
 import {Hooks} from "@uniswap/v4-core/contracts/libraries/Hooks.sol";

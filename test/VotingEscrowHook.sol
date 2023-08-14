@@ -8,11 +8,16 @@ import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/contracts/types/PoolId.sol
 import {PoolKey} from "@uniswap/v4-core/contracts/types/PoolKey.sol";
 import {PoolManager} from "@uniswap/v4-core/contracts/PoolManager.sol";
 import {IPoolManager} from "@uniswap/v4-core/contracts/interfaces/IPoolManager.sol";
-import {VotingEscrowHook} from "../src/VotingEscrowHook.sol";
+import {VotingEscrowHookImplementation} from "./VotingEscrowHookImplementation.sol";
 import {Hooks} from "@uniswap/v4-core/contracts/libraries/Hooks.sol";
+import {PoolModifyPositionTest} from "@uniswap/v4-core/contracts/test/PoolModifyPositionTest.sol";
+import {CurrencyLibrary, Currency} from "@uniswap/v4-core/contracts/types/Currency.sol";
 
 contract VotingEscrowHookTest is Test, Deployers {
     using PoolIdLibrary for PoolKey;
+
+    int24 constant MAX_TICK_SPACING = 32767;
+    uint160 constant SQRT_RATIO_2_1 = 112045541949572279837463876454;
 
     TestERC20 token0;
     TestERC20 token1;
@@ -31,7 +36,7 @@ contract VotingEscrowHookTest is Test, Deployers {
         manager = new PoolManager(500000);
 
         vm.record();
-        VotingEscrowHook impl = new VotingEscrowHookImplementation(manager, token0, "veToken", "veTKN", votingEscrowHook);
+        VotingEscrowHookImplementation impl = new VotingEscrowHookImplementation(manager, address(token0), "veToken", "veTKN", votingEscrowHook);
         (, bytes32[] memory writes) = vm.accesses(address(impl));
         vm.etch(address(votingEscrowHook), address(impl).code);
         // for each storage key that was written during the hook implementation, copy the value over
@@ -52,5 +57,9 @@ contract VotingEscrowHookTest is Test, Deployers {
         token1.approve(address(votingEscrowHook), type(uint256).max);
         token0.approve(address(modifyPositionRouter), type(uint256).max);
         token1.approve(address(modifyPositionRouter), type(uint256).max);
+    }
+
+    function testBeforeInitializeAllowsPoolCreation() public {
+        manager.initialize(key, SQRT_RATIO_1_1);
     }
 }
