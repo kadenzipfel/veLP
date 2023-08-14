@@ -82,18 +82,14 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
 
     /// @notice Constructor
     /// @param _poolManager Uniswap v4 PoolManager contract
-    /// @param _poolId Uniswap v4 pool ID which this hook is applied to
     /// @param _name Name of non-transferrable ve token
     /// @param _symbol Symbol of non-transferrable ve token
     constructor(
         IPoolManager _poolManager,
-        PoolId _poolId,
         address _token,
         string memory _name,
         string memory _symbol
     ) BaseHook(_poolManager) {
-        poolId = _poolId;
-
         token = ERC20(_token);
         pointHistory[0] = Point({
             bias: int128(0),
@@ -107,6 +103,14 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
 
         name = _name;
         symbol = _symbol;
+    }
+
+    /// @notice Set the poolId if not yet set
+    /// @dev Must be called immediately following deployment
+    /// @param _poolId Uniswap v4 pool ID which this hook is applied to
+    function setPoolId(PoolId _poolId) external {
+        require(!poolId, "poolId already initialized");
+        poolId = _poolId;
     }
 
     function getHooksCalls() public pure override returns (Hooks.Calls memory) {
