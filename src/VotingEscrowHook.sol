@@ -110,13 +110,13 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         });
     }
 
-    function beforeModifyPosition(address, PoolKey calldata, IPoolManager.ModifyPositionParams calldata modifyPositionParams)
+    function beforeModifyPosition(address sender, PoolKey calldata, IPoolManager.ModifyPositionParams calldata modifyPositionParams)
         external
         view
         override
         returns (bytes4)
     {
-        LockedBalance memory locked_ = locked[msg.sender];
+        LockedBalance memory locked_ = locked[sender];
         require(modifyPositionParams.liquidityDelta > 0 || locked_.end <= block.timestamp, "Can't withdraw before lock end");
         return VotingEscrowHook.beforeModifyPosition.selector;
     }
