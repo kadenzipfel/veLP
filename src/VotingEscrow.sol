@@ -11,15 +11,15 @@ import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/contracts/types/PoolId.sol
 import {Position} from "@uniswap/v4-core/contracts/libraries/Position.sol";
 import {BalanceDelta} from "@uniswap/v4-core/contracts/types/BalanceDelta.sol";
 
-/// @title  VotingEscrowHook
+/// @title  VotingEscrow
 /// @author Curve Finance (MIT) - original concept and implementation in Vyper
 ///           (see https://github.com/curvefi/curve-dao-contracts/blob/master/contracts/VotingEscrow.vy)
 ///         mStable (AGPL) - forking Curve's Vyper contract and porting to Solidity
 ///           (see https://github.com/mstable/mStable-contracts/blob/master/contracts/governance/IncentivisedVotingLockup.sol)
 ///         FIAT DAO (AGPL) - https://github.com/code-423n4/2022-08-fiatdao/blob/main/contracts/VotingEscrow.sol
-///         VotingEscrowHook (AGPL) - This version, forked and applied to Uniswap v4 hook by https://github.com/kadenzipfel
+///         VotingEscrow (AGPL) - This version, forked and applied to Uniswap v4 hook by https://github.com/kadenzipfel
 /// @notice Curve VotingEscrow mechanics applied to Uniswap v4 hook
-contract VotingEscrowHook is BaseHook, ReentrancyGuard {
+contract VotingEscrow is BaseHook, ReentrancyGuard {
     using PoolIdLibrary for PoolKey;
 
     // Shared Events
@@ -113,7 +113,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         returns (bytes4)
     {
         poolId = key.toId();
-        return VotingEscrowHook.afterInitialize.selector;
+        return VotingEscrow.afterInitialize.selector;
     }
 
     /// @notice Hook run before modifying user liquidity position
@@ -130,7 +130,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
                 || lockTicks_.upperTick != modifyPositionParams.tickUpper
         ) {
             // Not modifying locked position, continue execution
-            return VotingEscrowHook.beforeModifyPosition.selector;
+            return VotingEscrow.beforeModifyPosition.selector;
         }
 
         LockedBalance memory locked_ = locked[sender];
@@ -138,7 +138,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         require(
             modifyPositionParams.liquidityDelta > 0 || locked_.end <= block.timestamp, "Can't withdraw before lock end"
         );
-        return VotingEscrowHook.beforeModifyPosition.selector;
+        return VotingEscrow.beforeModifyPosition.selector;
     }
 
     /// @notice Hook run after modifying user liquidity position
@@ -156,7 +156,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
                 || lockTicks_.upperTick != modifyPositionParams.tickUpper
         ) {
             // Not modifying locked position, continue execution
-            return VotingEscrowHook.afterModifyPosition.selector;
+            return VotingEscrow.afterModifyPosition.selector;
         }
 
         Position.Info memory position =
@@ -174,7 +174,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
 
         _checkpoint(sender, locked_, newLocked);
 
-        return VotingEscrowHook.afterModifyPosition.selector;
+        return VotingEscrow.afterModifyPosition.selector;
     }
 
     /// ~~~~~~~~~~~~~~~~~~~~~~~~~~~ ///
