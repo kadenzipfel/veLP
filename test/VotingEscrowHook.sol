@@ -23,7 +23,9 @@ contract VotingEscrowHookTest is Test, Deployers {
     TestERC20 token1;
     PoolManager manager;
     VotingEscrowHookImplementation votingEscrowHook = VotingEscrowHookImplementation(
-        address(uint160(Hooks.BEFORE_MODIFY_POSITION_FLAG | Hooks.AFTER_MODIFY_POSITION_FLAG))
+        address(
+            uint160(Hooks.BEFORE_MODIFY_POSITION_FLAG | Hooks.AFTER_MODIFY_POSITION_FLAG | Hooks.AFTER_INITIALIZE_FLAG)
+        )
     );
     PoolKey key;
     PoolId id;

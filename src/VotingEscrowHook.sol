@@ -7,7 +7,7 @@ import {IPoolManager} from "@uniswap/v4-core/contracts/interfaces/IPoolManager.s
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {PoolKey} from "@uniswap/v4-core/contracts/types/PoolKey.sol";
-import {PoolId} from "@uniswap/v4-core/contracts/types/PoolId.sol";
+import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/contracts/types/PoolId.sol";
 import {Position} from "@uniswap/v4-core/contracts/libraries/Position.sol";
 import {BalanceDelta} from "@uniswap/v4-core/contracts/types/BalanceDelta.sol";
 
@@ -20,6 +20,8 @@ import {BalanceDelta} from "@uniswap/v4-core/contracts/types/BalanceDelta.sol";
 ///         VotingEscrowHook (AGPL) - This version, forked and applied to Uniswap v4 hook by https://github.com/kadenzipfel
 /// @notice Curve VotingEscrow mechanics applied to Uniswap v4 hook
 contract VotingEscrowHook is BaseHook, ReentrancyGuard {
+    using PoolIdLibrary for PoolKey;
+
     // Shared Events
     event Deposit(address indexed provider, uint256 value, uint256 locktime, LockAction indexed action, uint256 ts);
     event Withdraw(address indexed provider, uint256 value, LockAction indexed action, uint256 ts);
@@ -89,19 +91,10 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         symbol = _symbol;
     }
 
-    /// @notice Set the poolId if not yet set
-    /// @dev Must be called immediately following deployment
-    /// @param _poolId Uniswap v4 pool ID which this hook is applied to
-    function setPoolId(PoolId _poolId) external {
-        require(!initialized, "poolId already initialized");
-        poolId = _poolId;
-        initialized = true;
-    }
-
     function getHooksCalls() public pure override returns (Hooks.Calls memory) {
         return Hooks.Calls({
             beforeInitialize: false,
-            afterInitialize: false,
+            afterInitialize: true,
             beforeModifyPosition: true,
             afterModifyPosition: true,
             beforeSwap: false,
@@ -109,6 +102,18 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
             beforeDonate: false,
             afterDonate: false
         });
+    }
+
+    /// @notice Hook run after initializing pool
+    /// @param key Pool key
+    function afterInitialize(address, PoolKey calldata key, uint160, int24)
+        external
+        override
+        poolManagerOnly
+        returns (bytes4)
+    {
+        poolId = key.toId();
+        return VotingEscrowHook.afterInitialize.selector;
     }
 
     /// @notice Hook run before modifying user liquidity position
