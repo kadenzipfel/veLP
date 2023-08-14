@@ -50,6 +50,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     mapping(address => uint256) public userPointEpoch;
     mapping(uint256 => int128) public slopeChanges;
     mapping(address => LockedBalance) public locked;
+    mapping(address => LockTicks) public lockTicks;
 
     // Voting token
     string public name;
@@ -66,6 +67,10 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     struct LockedBalance {
         int128 amount;
         uint256 end;
+    }
+    struct LockTicks {
+        int24 lowerTick;
+        int24 upperTick;
     }
 
     // Miscellaneous
@@ -116,7 +121,14 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         override
         returns (bytes4)
     {
+        LockTicks memory lockTicks_ = lockTicks[sender];
+        if (lockTicks_.lowerTick != modifyPositionParams.tickLower || lockTicks_.upperTick != modifyPositionParams.tickUpper) {
+            // Not modifying locked position, continue execution
+            return VotingEscrowHook.beforeModifyPosition.selector;    
+        }
+
         LockedBalance memory locked_ = locked[sender];
+        // Can only increase position liquidity while locked
         require(modifyPositionParams.liquidityDelta > 0 || locked_.end <= block.timestamp, "Can't withdraw before lock end");
         return VotingEscrowHook.beforeModifyPosition.selector;
     }
@@ -361,6 +373,10 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         locked_.amount = int128(uint128(value));
         locked_.end = unlock_time;
         locked[msg.sender] = locked_;
+        lockTicks[msg.sender] = LockTicks({
+            lowerTick: _tickLower,
+            upperTick: _tickUpper
+        });
         _checkpoint(msg.sender, LockedBalance(0, 0), locked_);
         // Deposit locked tokens
         emit Deposit(
