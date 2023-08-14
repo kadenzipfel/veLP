@@ -80,6 +80,10 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         INCREASE_TIME
     }
 
+    /// @notice Constructor
+    /// @param _poolId Uniswap v4 pool ID which this hook is applied to
+    /// @param _name Name of non-transferrable ve token
+    /// @param _symbol Symbol of non-transferrable ve token
     constructor(
         PoolId _poolId,
         address _token,
@@ -116,6 +120,9 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         });
     }
 
+    /// @notice Hook run before modifying user liquidity position
+    /// @param sender msg.sender of PoolManager.modifyPosition call
+    /// @param modifyPositionParams Params passed to PoolManager.modifyPosition call
     function beforeModifyPosition(address sender, PoolKey calldata, IPoolManager.ModifyPositionParams calldata modifyPositionParams)
         external
         view
@@ -135,6 +142,9 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         return VotingEscrowHook.beforeModifyPosition.selector;
     }
 
+    /// @notice Hook run after modifying user liquidity position
+    /// @param sender msg.sender of PoolManager.modifyPosition call
+    /// @param modifyPositionParams Params passed to PoolManager.modifyPosition call
     function afterModifyPosition(address sender, PoolKey calldata, IPoolManager.ModifyPositionParams calldata modifyPositionParams, BalanceDelta)
         external
         view
