@@ -452,7 +452,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         locked[msg.sender] = locked_;
         require(oldUnlockTime > block.timestamp, "Lock expired");
         LockedBalance memory oldLocked = _copyLock(locked_);
-        oldLocked.end = uint128(unlock_time);
+        oldLocked.end = uint128(oldUnlockTime);
         _checkpoint(msg.sender, oldLocked, locked_);
         emit Deposit(
             msg.sender,
