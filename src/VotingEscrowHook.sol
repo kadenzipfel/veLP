@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity 0.8.19;
+pragma solidity ^0.8.19;
 
 import {BaseHook} from "@uniswap/v4-periphery/contracts/BaseHook.sol";
 import {Hooks} from "@uniswap/v4-core/contracts/libraries/Hooks.sol";
@@ -40,6 +40,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
 
     // Shared global state
     ERC20 public token;
+    bool initialized;
     uint256 public constant WEEK = 7 days;
     uint256 public constant MAXTIME = 365 days;
     uint256 public constant MULTIPLIER = 10**18;
@@ -109,8 +110,9 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     /// @dev Must be called immediately following deployment
     /// @param _poolId Uniswap v4 pool ID which this hook is applied to
     function setPoolId(PoolId _poolId) external {
-        require(!poolId, "poolId already initialized");
+        require(!initialized, "poolId already initialized");
         poolId = _poolId;
+        initialized = true;
     }
 
     function getHooksCalls() public pure override returns (Hooks.Calls memory) {
@@ -153,7 +155,6 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
     /// @param modifyPositionParams Params passed to PoolManager.modifyPosition call
     function afterModifyPosition(address sender, PoolKey calldata, IPoolManager.ModifyPositionParams calldata modifyPositionParams, BalanceDelta)
         external
-        view
         override
         poolManagerOnly
         returns (bytes4)
@@ -172,7 +173,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
             assert(locked_.amount < position.liquidity);
         }
 
-        newLocked = _copyLock(locked_);
+        LockedBalance memory newLocked = _copyLock(locked_);
         newLocked.amount = position.liquidity;
         locked[sender] = newLocked;
 
