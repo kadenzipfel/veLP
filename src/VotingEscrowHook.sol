@@ -167,7 +167,11 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
             // Lock still active, enforce invariant
             assert(locked_.amount < position.liquidity);
 
-            locked_.amount = position.liquidity;
+            newLocked = _copyLock(locked_);
+            newLocked.amount = position.liquidity;
+            locked[sender] = newLocked;
+
+            _checkpoint(sender, locked_, newLocked);
         }
 
         return VotingEscrowHook.afterModifyPosition.selector;
