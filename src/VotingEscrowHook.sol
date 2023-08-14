@@ -120,6 +120,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         external
         view
         override
+        poolManagerOnly
         returns (bytes4)
     {
         LockTicks memory lockTicks_ = lockTicks[sender];
@@ -138,6 +139,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         external
         view
         override
+        poolManagerOnly
         returns (bytes4)
     {
         LockTicks memory lockTicks_ = lockTicks[sender];
