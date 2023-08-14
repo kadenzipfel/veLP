@@ -66,8 +66,8 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         uint256 blk;
     }
     struct LockedBalance {
-        int128 amount;
-        uint256 end;
+        uint128 amount;
+        uint128 end;
     }
     struct LockTicks {
         int24 lowerTick;
@@ -165,11 +165,10 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
 
         if (locked_.end > block.timestamp) {
             // Lock still active, enforce invariant
-            assert(locked_.amount < int128(position.liquidity));
+            assert(locked_.amount < position.liquidity);
         }
 
-
-        locked_.amount = int128(position.liquidity);
+        locked_.amount = position.liquidity;
 
         return VotingEscrowHook.beforeModifyPosition.selector;
     }
@@ -227,7 +226,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
             // Kept at zero when they have to
             if (_oldLocked.end > block.timestamp) {
                 userOldPoint.slope =
-                    _oldLocked.amount /
+                    int128(_oldLocked.amount) /
                     int128(int256(MAXTIME));
                 userOldPoint.bias =
                     userOldPoint.slope *
@@ -235,7 +234,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
             }
             if (_newLocked.end > block.timestamp) {
                 userNewPoint.slope =
-                    _newLocked.amount /
+                    int128(_newLocked.amount) /
                     int128(int256(MAXTIME));
                 userNewPoint.bias =
                     userNewPoint.slope *
@@ -411,8 +410,8 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         require(unlock_time > block.timestamp, "Only future lock end");
         require(unlock_time <= block.timestamp + MAXTIME, "Exceeds maxtime");
         // Update lock and voting power (checkpoint)
-        locked_.amount = int128(uint128(value));
-        locked_.end = unlock_time;
+        locked_.amount = uint128(value);
+        locked_.end = uint128(unlock_time);
         locked[msg.sender] = locked_;
         lockTicks[msg.sender] = LockTicks({
             lowerTick: _tickLower,
@@ -445,11 +444,11 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         require(unlock_time <= block.timestamp + MAXTIME, "Exceeds maxtime");
         // Update lock
         uint256 oldUnlockTime = locked_.end;
-        locked_.end = unlock_time;
+        locked_.end = uint128(unlock_time);
         locked[msg.sender] = locked_;
         require(oldUnlockTime > block.timestamp, "Lock expired");
         LockedBalance memory oldLocked = _copyLock(locked_);
-        oldLocked.end = unlock_time;
+        oldLocked.end = uint128(unlock_time);
         _checkpoint(msg.sender, oldLocked, locked_);
         emit Deposit(
             msg.sender,
