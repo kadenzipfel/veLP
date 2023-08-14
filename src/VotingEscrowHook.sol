@@ -157,7 +157,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
         LockTicks memory lockTicks_ = lockTicks[sender];
         if (lockTicks_.lowerTick != modifyPositionParams.tickLower || lockTicks_.upperTick != modifyPositionParams.tickUpper) {
             // Not modifying locked position, continue execution
-            return VotingEscrowHook.beforeModifyPosition.selector;    
+            return VotingEscrowHook.afterModifyPosition.selector;    
         }
 
         Position.Info memory position = poolManager.getPosition(poolId, msg.sender, modifyPositionParams.tickLower, modifyPositionParams.tickUpper);
@@ -170,7 +170,7 @@ contract VotingEscrowHook is BaseHook, ReentrancyGuard {
 
         locked_.amount = position.liquidity;
 
-        return VotingEscrowHook.beforeModifyPosition.selector;
+        return VotingEscrowHook.afterModifyPosition.selector;
     }
 
     /// ~~~~~~~~~~~~~~~~~~~~~~~~~~~ ///
